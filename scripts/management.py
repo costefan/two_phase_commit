@@ -1,14 +1,16 @@
 import psycopg2
-from sqlalchemy import create_engine
 
 import app.settings as settings
+from sqlalchemy import create_engine
+from sqlalchemy.engine.url import URL
 
 
-def prepare_database(database_name, delete_existing: bool=True) -> bool:
+def prepare_database(database_name, delete_existing: bool=False) -> bool:
     """
     (Re)create a fresh database and run migrations.
 
-    :param delete_existing: whether or not to drop an existing database if it exists
+    :param delete_existing: whether or not to drop an existing database if
+     it exists
     :return: whether or not a database has been (re)created
     """
 
@@ -41,5 +43,21 @@ def prepare_database(database_name, delete_existing: bool=True) -> bool:
     cur.execute('CREATE DATABASE {}'.format(db_name))
     cur.close()
     conn.close()
+
+    engine = create_engine(str(URL(
+        database=settings.DB_NAME,
+        password=settings.DB_PASSWORD,
+        host=settings.DB_HOST,
+        port=settings.DB_PORT,
+        username=settings.DB_USER,
+        drivername='postgres',
+    )))
+    db_conn = engine.connect()
+    for schema in (settings.FLY_SCHEMA,
+                   settings.ACCOUNT_SCHEMA,
+                   settings.HOTELS_SCHEMA):
+        print('Creating schema {}'.format(schema))
+        db_conn.execute('CREATE SCHEMA IF NOT EXISTS {};'.format(schema))
+    db_conn.close()
 
     return True
