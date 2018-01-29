@@ -5,6 +5,7 @@ DB_PORT = '5432'
 DB_USER = 'postgres'
 DB_NAME = 'fly_db'
 
-FLY_SCHEMA = 'fly'
-HOTELS_SCHEMA = 'hotels'
-ACCOUNT_SCHEMA = 'account'
+# DB names
+FLY_SCHEMA = 'fly_db'
+HOTELS_SCHEMA = 'hotels_db'
+ACCOUNT_SCHEMA = 'account_db'

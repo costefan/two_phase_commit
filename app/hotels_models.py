@@ -12,6 +12,5 @@ t_bookings = Table(
     Column('hotel_name', String(254)),
     Column('arrival', String(254)),
     Column('departure', String(254)),
-    Column('datetime', DateTime),
-    schema='hotels'
+    Column('datetime', DateTime)
 )

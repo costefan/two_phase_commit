@@ -1,5 +1,3 @@
-from .accounts_models import t_user_account
-
 from .transaction_manager import TransactionManager
 
 
@@ -11,10 +9,16 @@ class Account:
         self.name = name
         self.amount = amount
 
-    def set_engine(self, engine):
-        self._engine = engine
+    def set_engines(self, engine1, engine2, engine3):
+        self._engine1 = engine1
+        self._engine2 = engine2
+        self._engine3 = engine3
 
-    async def book_flight(self):
-        transaction_manager = TransactionManager(self._engine)
+    def book_flight(self):
+        transaction_manager = TransactionManager(
+            self._engine1,
+            self._engine2,
+            self._engine3,
+        )
 
-        await transaction_manager.run()
+        transaction_manager.run()

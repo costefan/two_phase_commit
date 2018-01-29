@@ -12,6 +12,5 @@ t_bookings = Table(
     Column('fly_number', String(254)),
     Column('from_', String(254)),
     Column('to_', String(254)),
-    Column('datetime', DateTime),
-    schema='flights'
+    Column('datetime', DateTime)
 )

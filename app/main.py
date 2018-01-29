@@ -1,28 +1,28 @@
-import asyncio
-from aiopg.sa import create_engine
+import psycopg2
 
 from scripts.management import prepare_database
 
 from .settings import (
-    DB_HOST, DB_NAME, DB_PASSWORD, DB_USER
+    DB_HOST, DB_NAME, DB_PASSWORD, DB_USER,
+    FLY_SCHEMA, HOTELS_SCHEMA, ACCOUNT_SCHEMA
 )
 from .accounts import Account
-from .transaction_manager import TransactionManager
 
 
-async def go():
-    async with create_engine(user=DB_USER,
-                             database=DB_NAME,
-                             host=DB_HOST,
-                             password=DB_PASSWORD) as engine:
-        account = Account('Kostya', 320)
-        account.set_engine(engine)
+def go():
+    conn1 = psycopg2.connect(host=DB_HOST, user=DB_USER, password=DB_PASSWORD,
+                             dbname=FLY_SCHEMA)
+    conn2 = psycopg2.connect(host=DB_HOST, user=DB_USER, password=DB_PASSWORD,
+                             dbname=HOTELS_SCHEMA)
+    conn3 = psycopg2.connect(host=DB_HOST, user=DB_USER, password=DB_PASSWORD,
+                             dbname=ACCOUNT_SCHEMA)
 
-        await account.book_flight()
+    account = Account('Kostya', 320)
+    account.set_engines(conn1, conn2, conn3)
+
+    account.book_flight()
 
 
 def main():
     prepare_database(DB_NAME)
-    loop = asyncio.get_event_loop()
-    loop.run_until_complete(go())
-    loop.close()
+    go()

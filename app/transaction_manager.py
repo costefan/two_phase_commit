@@ -7,69 +7,91 @@ class TransactionManager:
 
     QUERIES = {
         'fly_booking': flight_bookings.insert().values(
-                        booking_id=12,
-                        client_name='aaa'),
+            booking_id=12,
+            client_name='Kostya'
+        ),
         'hotels_booking': hotels_bookings.insert().values(
-                            booking_id=12,
-                            client_name='aaa'),
+            booking_id=12,
+            client_name='Kostya'
+        ),
         'account_withdraw': t_user_account.update().values(
             amount=(
-                 t_user_account.c.amount - 100)
+                 t_user_account.c.amount - 100
+            )
         )
-            # .where(t_user_account.c.name == 'Kostya')
     }
 
-    def __init__(self, engine):
-        self.engine = engine
+    def __init__(self,
+                 engine1,
+                 engine2,
+                 engine3):
+        self.engine1 = engine1
+        self.engine2 = engine2
+        self.engine3 = engine3
 
-    async def run(self):
+    def run(self):
         print('Started transaction_manager...')
-        conn1 = await self.engine.acquire()
-        conn2 = await self.engine.acquire()
-        conn3 = await self.engine.acquire()
-        print('Getted connections')
-        tr1 = await conn1.begin_twophase()
-        tr2 = await conn2.begin_twophase()
-        tr3 = await conn3.begin_twophase()
-        print('Started twophase')
+        print('Cursors')
+        rollback = False
+        prepared_f, prepared_s, prepared_th = False, False, False
+        cur1 = self.engine1.cursor(); cur1.execute('BEGIN')
+        cur2 = self.engine2.cursor(); cur2.execute("BEGIN")
+        cur3 = self.engine3.cursor(); cur3.execute("BEGIN")
+        print('Started TWO phase')
         try:
             print('Executing')
-            await conn1.execute(self.QUERIES.get('fly_booking'))
-            await tr1.prepare()
 
-            await conn2.execute(self.QUERIES.get('hotels_booking'))
-            await tr2.prepare()
+            cur1.execute('insert into bookings (booking_id, client_name)'
+                         ' values (12, \'Kostya\')')
+            cur1.execute("PREPARE TRANSACTION 'foobar1'")
+            prepared_f = True
 
-            await conn3.execute(self.QUERIES.get('account_withdraw'))
-            await tr3.prepare()
+            cur2.execute('insert into bookings (booking_id, client_name)'
+                         ' values (12, \'Kostya\')')
+            cur2.execute("PREPARE TRANSACTION 'foobar2'")
+            prepared_s = True
+
+            cur3.execute('update user_account'
+                         ' set ammount = ammount - {}'.format(100))
+            cur3.execute("PREPARE TRANSACTION 'foobar3'")
+            prepared_th = True
+
+            print('Preparing')
         except (Exception, psycopg2.IntegrityError) as err:
-            print('Rollback')
-            print("cause " + str(err))
-            if tr1._is_prepared:
-                await conn1.rollback_prepared(tr1.xid)
-            if tr2._is_prepared:
-                await conn2.rollback_prepared(tr2.xid)
-            if tr3._is_prepared:
-                await conn3.rollback_prepared(tr3.xid)
-            print('Rollbacked')
-        else:
-            try:
-                print('Commit prepared')
-                await conn1.commit_prepared(tr1.xid)
-                print('Commited 1')
-                await conn2.commit_prepared(tr2.xid)
-                print('Commited 2')
-                await conn3.commit_prepared(tr3.xid)
-                print('Commited 3')
-            except Exception as err:
-                print('Commit err' + str(err))
-        finally:
-            tr1._is_active = False
-            tr2._is_active = False
-            tr3._is_active = False
-            print('Closing connections...')
+            print('Rollback block')
+            print('-------------------------')
 
-            await conn1.close()
-            await conn2.close()
-            await conn3.close()
-            print('Closed')
+            print("cause " + str(err))
+            rollback = True
+
+            if prepared_f:
+                cur1.execute("ROLLBACK PREPARED 'foobar1'")
+            if prepared_s:
+                cur2.execute("ROLLBACK PREPARED 'foobar2'")
+            if prepared_th:
+                cur3.execute("ROLLBACK PREPARED 'foobar3'")
+            print('ROLLBacked')
+
+        if not rollback:
+            print('Commit prepared')
+
+            cur1.execute("COMMIT PREPARED 'foobar1'")
+
+            cur2.execute("COMMIT PREPARED 'foobar2'")
+            cur3.execute("COMMIT PREPARED 'foobar3'")
+
+        # else:
+        #     if prepared_f:
+        #         cur1.execute("ROLLBACK PREPARED 'foobar1'")
+        #     if prepared_s:
+        #         cur2.execute("ROLLBACK PREPARED 'foobar2'")
+        #     if prepared_th:
+        #         cur3.execute("ROLLBACK PREPARED 'foobar3'")
+        #     print('ROLLBacked')
+
+        print('Closing connections...')
+
+        self.engine1.close()
+        self.engine2.close()
+        self.engine3.close()
+        print('Closed')
